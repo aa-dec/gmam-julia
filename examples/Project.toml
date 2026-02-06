@@ -1,0 +1,4 @@
+[deps]
+GMAM = "da6431c2-eab7-418b-8cd9-7f51452fef61"
+MatrixEquations = "99c1a7ee-ab34-5fd5-8076-27c950a045f4"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
