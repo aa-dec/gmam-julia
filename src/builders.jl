@@ -22,7 +22,7 @@ function build_θ(drift, σ)
     λ = build_λ(drift, σ)
     return function (x, y) 
         a = σ(x)*σ(x)'
-        return 1/2 * a\(λ(x,y)*y - drift(x))
+        return 1/2 * (a\(λ(x,y)*y - drift(x)))
     end
 end
 
@@ -57,6 +57,36 @@ function build_DₚDₚ_ham(ham::F) where {F<:Function}
         # Forward over reverse
         autodiff(set_runtime_activity(Forward), Const(Dₚ_ham!), Const(x), BatchDuplicated(p, batched_dp), 
             BatchDuplicated(dhdp, ddh_batch))
+
+        return format_output(ddh_batch)
+        
+    end
+end
+
+
+function build_DₓDₓ_ham(ham::F) where {F<:Function}
+    # Forward over reverse 
+
+    return function (x, p) 
+        n = length(x)
+
+        # In place gradient computation (reverse step)
+        function Dₓ_ham!(x, p, buffer_in)
+            autodiff(Reverse, Const(ham), Active, Duplicated(x, buffer_in), Const(p))
+            return nothing
+        end
+
+        # Input tangents
+        batched_dx = Matrix{Float64}(I, n, n)
+        batched_dx = ntuple(i -> batched_dx[:, i], n)
+
+        # Output accumulation
+        ddh_batch = ntuple(i -> zeros(n), n)
+        dhdx = zeros(n)
+
+        # Forward over reverse
+        autodiff(set_runtime_activity(Forward), Const(Dₓ_ham!), BatchDuplicated(x, batched_dx), Const(p), 
+            BatchDuplicated(dhdx, ddh_batch))
 
         return format_output(ddh_batch)
         

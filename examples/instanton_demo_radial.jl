@@ -40,30 +40,30 @@ Base.@kwdef struct Params
     dir::String = "plots"
 end
 
-cfg = Params(title="Jordan Block", prefix="linear")
+cfg = Params(title="Radial", prefix="radial")
 
 # dXt = drift(Xt) dt + sqrt(2 eps) sig(Xt) dt
 
 #############################
-##### Linear drift
+##### Radial Potential drift
 #############################
 
-@info "Testing against an analytic example: Linear drift Jordan Block."
+@info "Testing against an analytic example: Nonlinear potential drift."
 
 # Important that params are const for Enzyme AD
-const lam = 0.5
-const A = [-lam 1; 0 -lam]
+
+const offset = 1
 const B = [1 0 ; 0 1]
+radial(r2::Float64) = r2/sqrt(r2 + offset^2)
+d_radial(r2::Float64) = (offset^2 + r2/2)/((offset^2 + r2)^(3/2))
+dd_radial(r2::Float64) = -(offset^2 + r2/4)/((offset^2 + r2)^(5/2))
 
-@debug "The drift matrix: " a=A
+V(x::AbstractArray) = radial(x ⋅ x) # Regularized absolute value
+∇V(x::AbstractArray) = 2*x*d_radial(x ⋅ x)
+∇²V(x::AbstractArray) = 2*d_radial(x⋅ x)*I + 4*dd_radial(x⋅ x)*x*x'
 
-drift(x::AbstractArray) = A*x 
+drift(x::AbstractArray) = - ∇V(x)
 sig(x::AbstractArray) = B 
-
-# A cov + cov A' + 2BB' = 0
-const cov = lyapc(A, 2*B*B')  
-V(x::AbstractArray) = 1/2 * x ⋅ (cov\x)
-∇V(x::AbstractArray) = cov\x
 
 x_grid = range(-cfg.x_range, cfg.x_range, length=cfg.n_grid)
 y_grid = range(-cfg.y_range, cfg.y_range, length=cfg.n_grid)
@@ -99,8 +99,8 @@ savefig(filename);
 
 # Compute the instanton
 
-eq = [0,0]
-endpt = [0, 1]
+eq = [0.0, 0]
+endpt = [0.0, 1]
 
 @info "Computing instanton between $eq and $endpt."
 action, phi, ps, lambdas, action_list, iters = Instanton(drift, sig, eq, endpt; N=cfg.n_path, dt=cfg.dt)
@@ -129,38 +129,39 @@ savefig(filename);
 @info "Solving Riccati equation"
 Rs = Riccati(drift, sig, eq, phi, ps)
 @info "Final Matrix: " R1 = Rs[end]
-@info "Analytic Matrix: " D2V=inv(cov)
+@info "Analytic Matrix: " ∇²V(endpt)
 
-# @info "Computing instanton on grid of points"
-# computed_gradients = Matrix{Vector{Float64}}(undef, cfg.n_grid, cfg.n_grid)
-# computed_potentials = Matrix{Float64}(undef, cfg.n_grid, cfg.n_grid)
+@info "Computing instanton on grid of points"
+computed_gradients = Matrix{Vector{Float64}}(undef, cfg.n_grid, cfg.n_grid)
+computed_potentials = Matrix{Float64}(undef, cfg.n_grid, cfg.n_grid)
 
-# for (i, (x, y)) in enumerate(Iterators.product(x_grid, y_grid))
-#     V_comp, dV_comp, iters = Potential(drift, sig, eq, [x,y]; N=cfg.n_path, dt=cfg.dt)
-#     @info "x: $x, y: $y, action: $V, iters: $iters"
-#     computed_gradients[i] = dV_comp
-#     computed_potentials[i] = V_comp
-# end
+for (i, (x, y)) in enumerate(Iterators.product(x_grid, y_grid))
+    V_comp, dV_comp, iters = Potential(drift, sig, eq, [x,y]; N=cfg.n_path, dt=cfg.dt)
+    @info "x: $x, y: $y, action: $V, iters: $iters"
+    computed_gradients[i] = dV_comp
+    computed_potentials[i] = V_comp
+end
 
-# plt_computed = contour(x_grid, y_grid, computed_potentials', 
-#         fill=true,
-#         c=cfg.contour_cmap,
-#         levels=cfg.levels,
-#         size=cfg.size)
-# filename = joinpath(cfg.dir, cfg.prefix * "-computed.svg")
-# savefig(filename);
-# @info "Contour of the computed potential saved in $filename"
+plt_computed = contour(x_grid, y_grid, computed_potentials', 
+        fill=true,
+        c=cfg.contour_cmap,
+        levels=cfg.levels,
+        size=cfg.size)
+filename = joinpath(cfg.dir, cfg.prefix * "-computed.svg")
+savefig(filename);
+@info "Contour of the computed potential saved in $filename"
 
-# errs = abs.(computed_potentials - potentials) .+ 1e-15
-# plt_err = heatmap(x_grid, y_grid, errs, zscale=:log10, c=:balance, aspect_ratio=:equal)
-# filename = joinpath(cfg.dir, cfg.prefix * "-error.svg")
-# savefig(filename);
-# @info "Error in computed potential saved in $filename"
+errs = abs.(computed_potentials - potentials) .+ 1e-15
+plt_err = heatmap(x_grid, y_grid, errs, zscale=:log10, c=:balance, aspect_ratio=:equal)
+filename = joinpath(cfg.dir, cfg.prefix * "-error.svg")
+savefig(filename);
+@info "Error in computed potential saved in $filename"
 
-# grad_errs = norm.(computed_gradients .- potential_gradients) .+ 1e-15
-# plt_grad_err = heatmap(x_grid, y_grid, grad_errs, zscale=:log10, c=:balance, aspect_ratio=:equal)
-# filename = joinpath(cfg.dir, cfg.prefix * "-grad-error.svg")
-# savefig(filename);
-# @info "Error in computed gradients saved in $filename"
+grad_errs = norm.(computed_gradients .- potential_gradients) .+ 1e-15
+plt_grad_err = heatmap(x_grid, y_grid, grad_errs, zscale=:log10, c=:balance, aspect_ratio=:equal)
+filename = joinpath(cfg.dir, cfg.prefix * "-grad-error.svg")
+savefig(filename);
+@info "Error in computed gradients saved in $filename"
 
 # 
+
