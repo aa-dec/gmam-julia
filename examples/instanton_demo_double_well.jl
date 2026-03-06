@@ -231,7 +231,7 @@ end
 plt_computed = contour(x_grid, y_grid, computed_potentials', 
         fill=true,
         c=cfg.contour_cmap,
-        levels=cfg.levels,
+        levels=custom_levels,
         size=cfg.size)
 filename = joinpath(cfg.dir, cfg.prefix * "-computed.svg")
 savefig(filename);
