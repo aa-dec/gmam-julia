@@ -225,7 +225,6 @@ function Riccati(drift, sigma, stable_eq, phis, thetas)
     phi_itp = CubicSpline(phis, taus)
     theta_itp =CubicSpline(thetas, taus[2:end-1])
 
-    # Define R'
     function riccati_system!(dR, R, p, t)
         phi_ = phi_itp(t)
         theta_ = theta_itp(t)
@@ -245,6 +244,34 @@ function Riccati(drift, sigma, stable_eq, phis, thetas)
 
 end
 
-export Instanton, Potential, Riccati
+function Prefactor(drift, sigma, stable_eq, phis, thetas, lambdas, ric_sol)
+
+    # Assuming sig constant for now 
+    # TODO: Implement for general sigma
+
+    N = length(phis)-1
+    D_drift = build_Dₓ_drift(drift)
+
+    a(x) = sigma(x) * sigma(x)'
+
+    # first element of the sum is 0 (integral starts at 0)
+    term_1 = sum([tr(D_drift(phi))/lam for (phi, lam) in
+                    Iterators.zip(phis[2:end-1], lambdas[2:end-1])])
+    term_2 = sum([tr(a(phi) * DDV)/lam for (phi, DDV, lam) in 
+                    Iterators.zip(phis[2:end-1], ric_sol[2:end-1], lambdas[2: end-1] )])  # Here is the error for nonconstant sigma
+    F_integral = (term_1 + term_2)/N
+
+    DDV_init = ric_sol[1]
+    DDV_end = ric_sol[end]
+    DV_end = thetas[end]
+    a_end = a(phis[end])
+    constant = DV_end ⋅ (a_end * DV_end) / sqrt(2* pi) * sqrt(
+        det(DDV_init)/det(DDV_end) /(DV_end ⋅ (DDV_end \ DV_end))
+    )
+
+    return constant * exp(- F_integral)
+end
+
+export Instanton, Potential, Riccati, Prefactor
 
 end # module GMAM

@@ -34,6 +34,25 @@ format_output(result::AbstractArray) = reshape(result, :, 1)
 # Don't completely understand why. Something about needing to trace 
 # operations in memory.
 
+function build_Dₓ_drift(drift)
+
+    return function (x)
+        n = length(x)
+        # Input tangents
+        batched_dx = Matrix{Float64}(I, n, n)
+        batched_dx = ntuple(i -> batched_dx[:, i], n)
+
+        # Output accumulation
+        d_drift_batch = ntuple(i -> zeros(n), n)
+        dummy = zeros(n)
+
+        autodiff(Forward, Const(drift), BatchDuplicated(x, batched_dx),
+            BatchDuplicated(dummy, d_drift_batch))
+
+        return format_output(d_drift_batch)
+    end
+end
+
 function build_DₚDₚ_ham(ham::F) where {F<:Function}
     # Forward over reverse 
 
