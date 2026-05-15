@@ -42,12 +42,7 @@ function build_Dₓ_drift(drift)
         batched_dx = Matrix{Float64}(I, n, n)
         batched_dx = ntuple(i -> batched_dx[:, i], n)
 
-        # Output accumulation
-        d_drift_batch = ntuple(i -> zeros(n), n)
-        dummy = zeros(n)
-
-        autodiff(Forward, Const(drift), BatchDuplicated(x, batched_dx),
-            BatchDuplicated(dummy, d_drift_batch))
+        d_drift_batch = autodiff(Forward, Const(drift), BatchDuplicated(x, batched_dx))[1]
 
         return format_output(d_drift_batch)
     end

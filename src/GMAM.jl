@@ -216,7 +216,7 @@ function Riccati(drift, sigma, stable_eq, phis, thetas)
     # Solve DxDpH^T R + R DxDpH + R DpDpH R = 0
     theta0  = similar(stable_eq, Float64)
     theta0 .= 0.0
-    R0 = lyapc(DpDx_ham(stable_eq, theta0), DpDp_ham(stable_eq, theta0))
+    R0 = lyapc(DpDx_ham(stable_eq, theta0)', DpDp_ham(stable_eq, theta0))
     R0 = inv(R0)
 
     # Interpolations 
@@ -265,9 +265,16 @@ function Prefactor(drift, sigma, stable_eq, phis, thetas, lambdas, ric_sol)
     DDV_end = ric_sol[end]
     DV_end = thetas[end]
     a_end = a(phis[end])
+    @info "Initial det: " d=det(DDV_init)
+    @info "End det: " d=det(DDV_end)   
+    @info "Dot product: " dot=(DV_end ⋅ (DDV_end \ DV_end))
+
     constant = DV_end ⋅ (a_end * DV_end) / sqrt(2* pi) * sqrt(
         det(DDV_init)/det(DDV_end) /(DV_end ⋅ (DDV_end \ DV_end))
     )
+
+    @info "Integral (must be 0 in reversible systems): " F_integral 
+    @info "Constant: " constant
 
     return constant * exp(- F_integral)
 end
