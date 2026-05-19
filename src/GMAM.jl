@@ -265,11 +265,11 @@ function Prefactor(drift, sigma, stable_eq, phis, thetas, lambdas, ric_sol)
     DDV_end = ric_sol[end]
     DV_end = thetas[end]
     a_end = a(phis[end])
-    @info "Initial det: " d=det(DDV_init)
-    @info "End det: " d=det(DDV_end)   
-    @info "Dot product: " dot=(DV_end ⋅ (DDV_end \ DV_end))
+    # @info "Initial det: " d=det(DDV_init)
+    # @info "End det: " d=det(DDV_end)   
+    # @info "Dot product: " dot=(DV_end ⋅ (DDV_end \ DV_end))
 
-    constant = DV_end ⋅ (a_end * DV_end) / sqrt(2* pi) * sqrt(
+    constant = DV_end ⋅ (a_end * DV_end) / sqrt(8* pi) * sqrt(
         det(DDV_init)/det(DDV_end) /(DV_end ⋅ (DDV_end \ DV_end))
     )
 
